@@ -1,4 +1,9 @@
 {
   "issueKeyTestcaseValues": {},
-  "testManagerBasePath": "https://cloud.uipath.com/toqaectwrkb/DefaultTenant/testmanager_"
+  "testManagerBasePath": "https://cloud.uipath.com/toqaectwrkb/DefaultTenant/testmanager_",
+  "defaultProject": {
+    "id": "73620690-5e7f-0000-7eb1-0b49bc677c3e",
+    "name": "comunity pipeline new",
+    "key": "CPN"
+  }
 }
