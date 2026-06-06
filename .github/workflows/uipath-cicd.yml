@@ -15,10 +15,6 @@ env:
   ORCHESTRATOR_TENANT: 'DefaultTenant'
   ORCHESTRATOR_ORG:    'toqaectwrkb'
   ORCHESTRATOR_FOLDER: 'Shared'
-  APP_SCOPE: >-
-    OR.Folders OR.BackgroundTasks OR.TestSets OR.TestSetExecutions
-    OR.TestSetSchedules OR.Settings.Read OR.Robots.Read OR.Machines.Read
-    OR.Execution OR.Assets OR.Users.Read OR.Jobs OR.Monitoring
 
 jobs:
 
@@ -36,7 +32,7 @@ jobs:
       - name: Setup UiPath CLI
         uses: Mikael-RnD/setup-uipath@v2
 
-      - name: Pack noTC1
+      - name: Pack Project
         run: |
           uipcli package pack project.json `
             -o "${{ github.workspace }}\packages" `
@@ -52,15 +48,10 @@ jobs:
 
       - name: Debug Secrets
         run: |
-          if ("${{ secrets.UIPATHCLIENTID2 }}" -eq "") {
-            Write-Error "UIPATHCLIENTID2 is empty!"
+          if ("${{ secrets.UIPATH_PAT }}" -eq "") {
+            Write-Error "UIPATH_PAT is empty!"
           } else {
-            Write-Host "UIPATHCLIENTID2 is set ✅"
-          }
-          if ("${{ secrets.UIPATHCLIENTSECRET2 }}" -eq "") {
-            Write-Error "UIPATHCLIENTSECRET2 is empty!"
-          } else {
-            Write-Host "UIPATHCLIENTSECRET2 is set ✅"
+            Write-Host "UIPATH_PAT is set ✅"
           }
         shell: powershell
 
@@ -92,10 +83,8 @@ jobs:
             "$packagePath" `
             "${{ env.ORCHESTRATOR_URL }}" `
             "${{ env.ORCHESTRATOR_TENANT }}" `
-            -A "${{ env.ORCHESTRATOR_ORG }}" `
-            -I "${{ secrets.UIPATHCLIENTID2 }}" `
-            -S "${{ secrets.UIPATHCLIENTSECRET2 }}" `
-            --applicationScope "${{ env.APP_SCOPE }}" `
+            -t "${{ secrets.UIPATH_PAT }}" `
+            -a "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             --traceLevel Information
         shell: powershell
@@ -120,15 +109,13 @@ jobs:
           uipcli test run `
             "${{ env.ORCHESTRATOR_URL }}" `
             "${{ env.ORCHESTRATOR_TENANT }}" `
-            -A "${{ env.ORCHESTRATOR_ORG }}" `
-            -I "${{ secrets.UIPATHCLIENTID2 }}" `
-            -S "${{ secrets.UIPATHCLIENTSECRET2 }}" `
-            --applicationScope "${{ env.APP_SCOPE }}" `
+            -t "${{ secrets.UIPATH_PAT }}" `
+            -a "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             -s "pipeline testset" `
             --out junit `
             -r "${{ github.workspace }}\results\results.xml" `
-            -w 120 `
+            -w 300 `
             --traceLevel Information
         shell: powershell
 
