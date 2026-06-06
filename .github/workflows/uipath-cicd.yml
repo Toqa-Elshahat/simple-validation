@@ -1,0 +1,142 @@
+name: UiPath — Run Tests on Push
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+env:
+  ORCHESTRATOR_URL:    'https://cloud.uipath.com/'
+  ORCHESTRATOR_TENANT: 'DefaultTenant'
+  ORCHESTRATOR_ORG:    'toqaectwrkb'
+  ORCHESTRATOR_FOLDER: 'Shared'
+  APP_SCOPE: >-
+    OR.Folders OR.BackgroundTasks OR.TestSets OR.TestSetExecutions
+    OR.TestSetSchedules OR.Settings.Read OR.Robots.Read OR.Machines.Read
+    OR.Execution OR.Assets OR.Users.Read OR.Jobs OR.Monitoring
+
+jobs:
+
+# ============================================================
+#  JOB 1 — PACK
+# ============================================================
+  pack:
+    name: '📦 Pack Project'
+    runs-on: windows-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup UiPath CLI
+        uses: Mikael-RnD/setup-uipath@v2
+
+      - name: Pack noTC1
+        run: |
+          uipcli package pack project.json `
+            -o "${{ github.workspace }}\packages" `
+            --autoVersion
+        shell: powershell
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name:           RpaPackage
+          path:           ${{ github.workspace }}\packages\*.nupkg
+          retention-days: 7
+
+      - name: Debug Secrets
+        run: |
+          if ("${{ secrets.UIPATHCLIENTID2 }}" -eq "") {
+            Write-Error "UIPATHCLIENTID2 is empty!"
+          } else {
+            Write-Host "UIPATHCLIENTID2 is set ✅"
+          }
+          if ("${{ secrets.UIPATHCLIENTSECRET2 }}" -eq "") {
+            Write-Error "UIPATHCLIENTSECRET2 is empty!"
+          } else {
+            Write-Host "UIPATHCLIENTSECRET2 is set ✅"
+          }
+        shell: powershell
+
+# ============================================================
+#  JOB 2 — DEPLOY
+# ============================================================
+  deploy:
+    name: '🚀 Deploy to Orchestrator'
+    runs-on: windows-latest
+    needs: pack
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup UiPath CLI
+        uses: Mikael-RnD/setup-uipath@v2
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: RpaPackage
+          path: ${{ github.workspace }}\packages
+
+      - name: Deploy to Orchestrator
+        run: |
+          $packagePath = (Get-ChildItem "${{ github.workspace }}\packages\*.nupkg" | Select-Object -First 1).FullName
+          uipcli package deploy `
+            "$packagePath" `
+            "${{ env.ORCHESTRATOR_URL }}" `
+            "${{ env.ORCHESTRATOR_TENANT }}" `
+            -A "${{ env.ORCHESTRATOR_ORG }}" `
+            -I "${{ secrets.UIPATHCLIENTID2 }}" `
+            -S "${{ secrets.UIPATHCLIENTSECRET2 }}" `
+            --applicationScope "${{ env.APP_SCOPE }}" `
+            -o "${{ env.ORCHESTRATOR_FOLDER }}" `
+            --traceLevel Information
+        shell: powershell
+
+# ============================================================
+#  JOB 3 — RUN TESTS
+# ============================================================
+  run-tests:
+    name: '🧪 Run Test Cases'
+    runs-on: windows-latest
+    needs: deploy
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup UiPath CLI
+        uses: Mikael-RnD/setup-uipath@v2
+
+      - name: Run Test Set in Orchestrator
+        run: |
+          uipcli test run `
+            "${{ env.ORCHESTRATOR_URL }}" `
+            "${{ env.ORCHESTRATOR_TENANT }}" `
+            -A "${{ env.ORCHESTRATOR_ORG }}" `
+            -I "${{ secrets.UIPATHCLIENTID2 }}" `
+            -S "${{ secrets.UIPATHCLIENTSECRET2 }}" `
+            --applicationScope "${{ env.APP_SCOPE }}" `
+            -o "${{ env.ORCHESTRATOR_FOLDER }}" `
+            -s "pipeline testset" `
+            --out junit `
+            -r "${{ github.workspace }}\results\results.xml" `
+            -w 120 `
+            --traceLevel Information
+        shell: powershell
+
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name:          'Test Results'
+          path:          '${{ github.workspace }}\results\results.xml'
+          reporter:      java-junit
+          fail-on-error: true
