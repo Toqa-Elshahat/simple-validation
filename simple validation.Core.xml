@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>simple validation.Core</name>
+    </assembly>
+    <members>
+        <member name="M:simplevalidation.WorkflowRunnerService.CoverageMergeHelperWorkflow(System.String,System.Int64,System.Boolean)">
+            <summary>
+            Invokes the CoverageMergeHelperWorkflow.xaml
+            </summary>
+            <param name="isolated">Indicates whether to isolate executions (run them within a different process)</param>
+        </member>
+        <member name="M:simplevalidation.WorkflowRunnerService.Main(System.Boolean)">
+            <summary>
+            Invokes the Main.xaml
+            </summary>
+            <param name="isolated">Indicates whether to isolate executions (run them within a different process)</param>
+        </member>
+        <member name="M:simplevalidation.WorkflowRunnerService.PerformanceTestingBootloaderWorkflow(System.String,System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.Boolean)">
+            <summary>
+            Invokes the PerformanceTestingBootloaderWorkflow.cs
+            </summary>
+            <param name="isolated">Indicates whether to isolate executions (run them within a different process)</param>
+        </member>
+        <member name="M:simplevalidation.WorkflowRunnerService.verifyTexts(System.Boolean)">
+            <summary>
+            Invokes the verifyTexts.xaml
+            </summary>
+            <param name="isolated">Indicates whether to isolate executions (run them within a different process)</param>
+        </member>
+    </members>
+</doc>

@@ -1,3 +1,4 @@
 {
-  "issueKeyTestcaseValues": {}
+  "issueKeyTestcaseValues": {},
+  "testManagerBasePath": "https://cloud.uipath.com/toqaectwrkb/DefaultTenant/testmanager_"
 }
