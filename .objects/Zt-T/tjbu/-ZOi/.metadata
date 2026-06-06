@@ -1,0 +1,13 @@
+﻿{
+  "Name": "Edge Customer Service",
+  "Type": "Screen",
+  "Id": "-ZOil62HaEK2Sv_oi1PdHA",
+  "Reference": "dQNLZMEaUUWgTHis-pAkhw/-ZOil62HaEK2Sv_oi1PdHA",
+  "ParentRef": "dQNLZMEaUUWgTHis-pAkhw/tjbujKsp3068qEfuAQWINA",
+  "Created": "2026-06-06T14:28:18.241321Z",
+  "Updated": "2026-06-06T14:28:18.241321Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=25.10.31.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=25.12.1.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}

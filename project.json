@@ -5,7 +5,8 @@
   "main": "Main.xaml",
   "dependencies": {
     "UiPath.System.Activities": "[26.2.6]",
-    "UiPath.Testing.Activities": "[25.10.1]"
+    "UiPath.Testing.Activities": "[25.10.1]",
+    "UiPath.UIAutomation.Activities": "[25.10.31]"
   },
   "webServices": [],
   "entitiesStores": [],
@@ -46,6 +47,13 @@
         "testCaseType": "TestCase",
         "executionTemplateInvokeIsolated": false,
         "fileName": "verifyTexts.xaml"
+      },
+      {
+        "editingStatus": "Publishable",
+        "testCaseId": "0bf8e461-427a-4aa4-9eba-1c960e68e845",
+        "testCaseType": "TestCase",
+        "executionTemplateInvokeIsolated": false,
+        "fileName": "webtestcase.xaml"
       }
     ],
     "saveToCloud": false

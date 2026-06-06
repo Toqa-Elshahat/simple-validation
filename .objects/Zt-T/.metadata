@@ -1,0 +1,12 @@
+﻿{
+  "Name": "Edge Customer Service",
+  "Type": "App",
+  "Id": "Zt-TKm5GnUqXIZ7TdhWJ4g",
+  "Reference": "dQNLZMEaUUWgTHis-pAkhw/Zt-TKm5GnUqXIZ7TdhWJ4g",
+  "Created": "2026-06-06T14:28:17.8344818Z",
+  "Updated": "2026-06-06T14:28:17.8344818Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=25.10.31.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=25.12.1.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}
