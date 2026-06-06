@@ -83,8 +83,8 @@ jobs:
             "$packagePath" `
             "${{ env.ORCHESTRATOR_URL }}" `
             "${{ env.ORCHESTRATOR_TENANT }}" `
-            -t "${{ secrets.UIPATH_PAT }}" `
-            -a "${{ env.ORCHESTRATOR_ORG }}" `
+            --token "${{ secrets.UIPATH_PAT }}" `
+            --accountName "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             --traceLevel Information
         shell: powershell
@@ -109,8 +109,8 @@ jobs:
           uipcli test run `
             "${{ env.ORCHESTRATOR_URL }}" `
             "${{ env.ORCHESTRATOR_TENANT }}" `
-            -t "${{ secrets.UIPATH_PAT }}" `
-            -a "${{ env.ORCHESTRATOR_ORG }}" `
+            --token "${{ secrets.UIPATH_PAT }}" `
+            --accountName "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             -s "pipeline testset" `
             --out junit `
