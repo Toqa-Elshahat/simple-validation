@@ -120,6 +120,8 @@ jobs:
             --out junit `
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
+            --attachRobotLogs true `
+            --traceLevel Verbose `
             --traceLevel Information
         shell: powershell
 
