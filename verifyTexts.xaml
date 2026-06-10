@@ -86,14 +86,10 @@
     </sap:WorkflowViewStateService.ViewState>
     <Sequence sap:VirtualizedContainerService.HintSize="449.6,300" sap2010:WorkflowViewState.IdRef="Sequence_5">
       <Sequence.Variables>
-        <Variable x:TypeArguments="x:String" Name="variable2">
-          <Variable.Default>
-            <Literal x:TypeArguments="x:String">a</Literal>
-          </Variable.Default>
-        </Variable>
+        <Variable x:TypeArguments="x:String" Default="a" Name="variable2" />
         <Variable x:TypeArguments="x:String" Name="variable1">
           <Variable.Default>
-            <Literal x:TypeArguments="x:String">a</Literal>
+            <Literal x:TypeArguments="x:String">b</Literal>
           </Variable.Default>
         </Variable>
       </Sequence.Variables>
@@ -102,7 +98,7 @@
           <x:Boolean x:Key="IsExpanded">True</x:Boolean>
         </scg:Dictionary>
       </sap:WorkflowViewStateService.ViewState>
-      <uta:VerifyExpressionWithOperator AlternativeVerificationTitle="{x:Null}" KeepScreenshots="{x:Null}" OutputMessageFormat="{x:Null}" Result="{x:Null}" ScreenshotsPath="{x:Null}" ContinueOnFailure="True" DisplayName="Verify Expression with Operator" sap:VirtualizedContainerService.HintSize="334.4,193.6" sap2010:WorkflowViewState.IdRef="VerifyExpressionWithOperator_1" Operator="Equality" TakeScreenshotInCaseOfFailingAssertion="False" TakeScreenshotInCaseOfSucceedingAssertion="False">
+      <uta:VerifyExpressionWithOperator AlternativeVerificationTitle="{x:Null}" KeepScreenshots="{x:Null}" OutputMessageFormat="{x:Null}" Result="{x:Null}" ScreenshotsPath="{x:Null}" ContinueOnFailure="True" DisplayName="Verify Expression with Operator" sap:VirtualizedContainerService.HintSize="416,216.8" sap2010:WorkflowViewState.IdRef="VerifyExpressionWithOperator_1" Operator="Equality" TakeScreenshotInCaseOfFailingAssertion="False" TakeScreenshotInCaseOfSucceedingAssertion="False">
         <uta:VerifyExpressionWithOperator.FirstExpression>
           <InArgument x:TypeArguments="x:String">[variable1]</InArgument>
         </uta:VerifyExpressionWithOperator.FirstExpression>
