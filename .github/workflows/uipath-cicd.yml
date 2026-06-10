@@ -121,7 +121,7 @@ jobs:
             --accountName "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             -s "pipeline testset" `
-            --out junit `
+            --out uipath `
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
             --attachRobotLogs true `
