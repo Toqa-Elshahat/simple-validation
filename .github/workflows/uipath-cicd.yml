@@ -96,6 +96,10 @@ jobs:
     name: '🧪 Run Test Cases'
     runs-on: windows-latest
     needs: deploy
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
     steps:
 
       - name: Checkout code
@@ -127,3 +131,4 @@ jobs:
           path:          'results/results.xml'
           reporter:      java-junit
           fail-on-error: false
+          token:         ${{ secrets.GITHUB_TOKEN }} 
