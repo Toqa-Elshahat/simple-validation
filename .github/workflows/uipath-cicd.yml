@@ -108,6 +108,10 @@ jobs:
       - name: Setup UiPath CLI
         uses: Mikael-RnD/setup-uipath@v2
 
+      - name: Create results directory
+        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
+        shell: powershell
+
       - name: Run Test Set in Orchestrator
         run: |
           uipcli test run `
@@ -121,9 +125,15 @@ jobs:
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
             --attachRobotLogs true `
-            --traceLevel Verbose `
-            --traceLevel Information
+            --traceLevel Verbose
         shell: powershell
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ${{ github.workspace }}\results\results.xml
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
@@ -133,4 +143,4 @@ jobs:
           path:          'results/results.xml'
           reporter:      java-junit
           fail-on-error: false
-          token:         ${{ secrets.GITHUB_TOKEN }} 
+          token:         ${{ secrets.GITHUB_TOKEN }}
