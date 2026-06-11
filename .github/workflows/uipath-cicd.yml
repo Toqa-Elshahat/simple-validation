@@ -120,7 +120,7 @@ jobs:
             --token "${{ secrets.UIPATH_PAT }}" `
             --accountName "${{ env.ORCHESTRATOR_ORG }}" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
-            -s "pipeline testset" `
+            -P "project.json" `
             --out junit `
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
