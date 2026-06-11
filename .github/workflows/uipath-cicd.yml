@@ -123,9 +123,8 @@ jobs:
             -Uri "https://github.com/allure-framework/allure2/releases/download/${{ env.ALLURE_VERSION }}/allure-${{ env.ALLURE_VERSION }}.zip" `
             -OutFile $allureZip
           Expand-Archive -Path $allureZip -DestinationPath $allureDir -Force
-          # Store path in env for next steps
           echo "ALLURE_BIN=$allureDir\allure-${{ env.ALLURE_VERSION }}\bin\allure.bat" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "✅ Allure installed at $allureDir\allure-${{ env.ALLURE_VERSION }}\bin"
+          Write-Host "✅ Allure installed"
         shell: powershell
 
       - name: Create results directories
@@ -155,15 +154,81 @@ jobs:
             --repositoryType git
         shell: powershell
 
-      - name: Prepare Allure input
+      - name: Convert JUnit XML to Allure JSON format
         if: always()
         run: |
-          # Copy results to allure input folder
-          Copy-Item `
-            "${{ github.workspace }}\results\results.xml" `
-            "${{ github.workspace }}\allure-results\results.xml"
+          # Install Python converter
+          pip install junit2allure --quiet
 
-          # Add environment info to report
+          # Convert JUnit XML to Allure JSON
+          python -c "
+          import xml.etree.ElementTree as ET
+          import json, os, uuid, time
+
+          tree = ET.parse(r'${{ github.workspace }}\results\results.xml')
+          root = tree.getroot()
+
+          output_dir = r'${{ github.workspace }}\allure-results'
+          os.makedirs(output_dir, exist_ok=True)
+
+          for suite in root.iter('testsuite'):
+              suite_name = suite.get('name', 'Unknown Suite')
+              for tc in suite.iter('testcase'):
+                  test_name = tc.get('name', 'Unknown Test')
+                  duration  = float(tc.get('time', 0)) * 1000
+                  failure   = tc.find('failure')
+                  sysout    = tc.find('system-out')
+
+                  status = 'failed' if failure is not None else 'passed'
+
+                  result = {
+                      'uuid': str(uuid.uuid4()),
+                      'name': test_name,
+                      'status': status,
+                      'stage': 'finished',
+                      'start': int(time.time() * 1000) - int(duration),
+                      'stop': int(time.time() * 1000),
+                      'fullName': suite_name + '.' + test_name,
+                      'labels': [
+                          {'name': 'suite',     'value': suite_name},
+                          {'name': 'framework', 'value': 'UiPath'},
+                          {'name': 'language',  'value': 'VisualBasic'},
+                          {'name': 'branch',    'value': '${{ github.ref_name }}'},
+                          {'name': 'commit',    'value': '${{ github.sha }}'}
+                      ],
+                      'steps': []
+                  }
+
+                  if failure is not None:
+                      result['statusDetails'] = {
+                          'message': failure.get('message', 'Test failed'),
+                          'trace':   failure.text or ''
+                      }
+
+                  if sysout is not None and sysout.text:
+                      for line in sysout.text.strip().split('\n'):
+                          line = line.strip()
+                          if line:
+                              level = 'failed' if 'error' in line.lower() else 'passed'
+                              result['steps'].append({
+                                  'name':   line,
+                                  'status': level,
+                                  'stage':  'finished'
+                              })
+
+                  fname = os.path.join(output_dir, str(uuid.uuid4()) + '-result.json')
+                  with open(fname, 'w') as f:
+                      json.dump(result, f, indent=2)
+
+          print('Conversion complete')
+          "
+
+          Write-Host "✅ JUnit XML converted to Allure format"
+        shell: powershell
+
+      - name: Add Allure environment info
+        if: always()
+        run: |
           @"
           Branch=${{ github.ref_name }}
           Commit=${{ github.sha }}
@@ -171,14 +236,11 @@ jobs:
           Tenant=${{ env.ORCHESTRATOR_TENANT }}
           Folder=${{ env.ORCHESTRATOR_FOLDER }}
           "@ | Out-File "${{ github.workspace }}\allure-results\environment.properties" -Encoding UTF8
-
-          Write-Host "✅ Allure input prepared"
         shell: powershell
 
       - name: Generate Allure Report
         if: always()
         run: |
-          # Use full path stored in ALLURE_BIN env variable
           & "${{ env.ALLURE_BIN }}" generate `
             "${{ github.workspace }}\allure-results" `
             --output "${{ github.workspace }}\allure-report" `
