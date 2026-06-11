@@ -126,6 +126,10 @@ jobs:
             -w 300 `
             --attachRobotLogs true `
             --traceLevel Verbose
+            --repositoryUrl "https://github.com/Toqa-Elshahat/simple-validation" `
+            --repositoryBranch "${{ github.ref_name }}" `
+            --repositoryCommit "${{ github.sha }}" `
+            --repositoryType git
         shell: powershell
 
       - name: Upload results artifact

@@ -90,7 +90,7 @@
         <Variable x:TypeArguments="x:String" Default="a" Name="variable2" />
         <Variable x:TypeArguments="x:String" Name="variable1">
           <Variable.Default>
-            <Literal x:TypeArguments="x:String">a</Literal>
+            <Literal x:TypeArguments="x:String">b</Literal>
           </Variable.Default>
         </Variable>
       </Sequence.Variables>
