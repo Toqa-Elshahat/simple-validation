@@ -132,6 +132,22 @@ jobs:
             --repositoryType git
         shell: powershell
 
+      - name: Generate HTML Report
+        if: always()
+        run: |
+          npx xunit-viewer `
+            --results "${{ github.workspace }}\results\results.xml" `
+            --output "${{ github.workspace }}\results\report.html"
+        shell: powershell
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: html-test-report
+          path: ${{ github.workspace }}\results\report.html
+          retention-days: 14
+
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
         if: always()
