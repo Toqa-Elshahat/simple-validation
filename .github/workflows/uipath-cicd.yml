@@ -125,7 +125,7 @@ jobs:
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
             --attachRobotLogs true `
-            --traceLevel Verbose
+            --traceLevel Verbose `
             --repositoryUrl "https://github.com/Toqa-Elshahat/simple-validation" `
             --repositoryBranch "${{ github.ref_name }}" `
             --repositoryCommit "${{ github.sha }}" `
@@ -138,6 +138,7 @@ jobs:
         with:
           name: test-results
           path: ${{ github.workspace }}\results\results.xml
+          retention-days: 14
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
