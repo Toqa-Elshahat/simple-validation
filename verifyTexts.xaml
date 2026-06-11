@@ -76,6 +76,7 @@
       <AssemblyReference>System.Private.DataContractSerialization</AssemblyReference>
       <AssemblyReference>System.Runtime.Serialization.Formatters</AssemblyReference>
       <AssemblyReference>System.Runtime.Serialization.Primitives</AssemblyReference>
+      <AssemblyReference>simple validation.Core</AssemblyReference>
     </sco:Collection>
   </TextExpression.ReferencesForImplementation>
   <Sequence DisplayName="verifyTexts" sap:VirtualizedContainerService.HintSize="641.6,363.65666666666664" sap2010:WorkflowViewState.IdRef="Sequence_1">
@@ -89,7 +90,7 @@
         <Variable x:TypeArguments="x:String" Default="a" Name="variable2" />
         <Variable x:TypeArguments="x:String" Name="variable1">
           <Variable.Default>
-            <Literal x:TypeArguments="x:String">b</Literal>
+            <Literal x:TypeArguments="x:String">a</Literal>
           </Variable.Default>
         </Variable>
       </Sequence.Variables>
