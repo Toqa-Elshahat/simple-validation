@@ -15,6 +15,7 @@ env:
   ORCHESTRATOR_TENANT: 'DefaultTenant'
   ORCHESTRATOR_ORG:    'toqaectwrkb'
   ORCHESTRATOR_FOLDER: 'Shared'
+  ALLURE_VERSION:      '2.27.0'
 
 jobs:
 
@@ -108,7 +109,26 @@ jobs:
       - name: Setup UiPath CLI
         uses: Mikael-RnD/setup-uipath@v2
 
-      - name: Create results directory
+      - name: Setup Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Allure CLI
+        run: |
+          $allureZip = "${{ github.workspace }}\allure.zip"
+          $allureDir = "${{ github.workspace }}\allure-cli"
+          Invoke-WebRequest `
+            -Uri "https://github.com/allure-framework/allure2/releases/download/${{ env.ALLURE_VERSION }}/allure-${{ env.ALLURE_VERSION }}.zip" `
+            -OutFile $allureZip
+          Expand-Archive -Path $allureZip -DestinationPath $allureDir -Force
+          # Store path in env for next steps
+          echo "ALLURE_BIN=$allureDir\allure-${{ env.ALLURE_VERSION }}\bin\allure.bat" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "✅ Allure installed at $allureDir\allure-${{ env.ALLURE_VERSION }}\bin"
+        shell: powershell
+
+      - name: Create results directories
         run: |
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\allure-results"
@@ -135,34 +155,15 @@ jobs:
             --repositoryType git
         shell: powershell
 
-      - name: Setup Java for Allure
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install Allure CLI
-        run: |
-          Invoke-WebRequest `
-            -Uri "https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.zip" `
-            -OutFile "${{ github.workspace }}\allure.zip"
-          Expand-Archive `
-            -Path "${{ github.workspace }}\allure.zip" `
-            -DestinationPath "${{ github.workspace }}\allure-cli"
-          echo "${{ github.workspace }}\allure-cli\allure-2.27.0\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: powershell
-
-      - name: Copy results to Allure input
+      - name: Prepare Allure input
         if: always()
         run: |
+          # Copy results to allure input folder
           Copy-Item `
             "${{ github.workspace }}\results\results.xml" `
             "${{ github.workspace }}\allure-results\results.xml"
-        shell: powershell
 
-      - name: Add Allure environment info
-        if: always()
-        run: |
+          # Add environment info to report
           @"
           Branch=${{ github.ref_name }}
           Commit=${{ github.sha }}
@@ -170,15 +171,19 @@ jobs:
           Tenant=${{ env.ORCHESTRATOR_TENANT }}
           Folder=${{ env.ORCHESTRATOR_FOLDER }}
           "@ | Out-File "${{ github.workspace }}\allure-results\environment.properties" -Encoding UTF8
+
+          Write-Host "✅ Allure input prepared"
         shell: powershell
 
       - name: Generate Allure Report
         if: always()
         run: |
-          allure generate `
+          # Use full path stored in ALLURE_BIN env variable
+          & "${{ env.ALLURE_BIN }}" generate `
             "${{ github.workspace }}\allure-results" `
             --output "${{ github.workspace }}\allure-report" `
             --clean
+          Write-Host "✅ Allure report generated"
         shell: powershell
 
       - name: Upload Allure Report
