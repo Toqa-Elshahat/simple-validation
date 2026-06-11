@@ -109,7 +109,10 @@ jobs:
         uses: Mikael-RnD/setup-uipath@v2
 
       - name: Create results directory
-        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\allure-results"
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\allure-report"
         shell: powershell
 
       - name: Run Test Set in Orchestrator
@@ -132,23 +135,61 @@ jobs:
             --repositoryType git
         shell: powershell
 
-      - name: Generate HTML Report
-        if: always()
+      - name: Setup Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Allure CLI
         run: |
-          npx xunit-viewer `
-            --results "${{ github.workspace }}\results\results.xml" `
-            --output "${{ github.workspace }}\results\report.html"
+          Invoke-WebRequest `
+            -Uri "https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.zip" `
+            -OutFile "${{ github.workspace }}\allure.zip"
+          Expand-Archive `
+            -Path "${{ github.workspace }}\allure.zip" `
+            -DestinationPath "${{ github.workspace }}\allure-cli"
+          echo "${{ github.workspace }}\allure-cli\allure-2.27.0\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: powershell
 
-      - name: Upload HTML Report
+      - name: Copy results to Allure input
+        if: always()
+        run: |
+          Copy-Item `
+            "${{ github.workspace }}\results\results.xml" `
+            "${{ github.workspace }}\allure-results\results.xml"
+        shell: powershell
+
+      - name: Add Allure environment info
+        if: always()
+        run: |
+          @"
+          Branch=${{ github.ref_name }}
+          Commit=${{ github.sha }}
+          Orchestrator=${{ env.ORCHESTRATOR_URL }}
+          Tenant=${{ env.ORCHESTRATOR_TENANT }}
+          Folder=${{ env.ORCHESTRATOR_FOLDER }}
+          "@ | Out-File "${{ github.workspace }}\allure-results\environment.properties" -Encoding UTF8
+        shell: powershell
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          allure generate `
+            "${{ github.workspace }}\allure-results" `
+            --output "${{ github.workspace }}\allure-report" `
+            --clean
+        shell: powershell
+
+      - name: Upload Allure Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: html-test-report
-          path: ${{ github.workspace }}\results\report.html
+          name: allure-report
+          path: ${{ github.workspace }}\allure-report
           retention-days: 14
 
-      - name: Upload results artifact
+      - name: Upload raw results
         uses: actions/upload-artifact@v4
         if: always()
         with:
