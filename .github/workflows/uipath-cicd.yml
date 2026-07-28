@@ -144,3 +144,71 @@ jobs:
           reporter:      java-junit
           fail-on-error: false
           token:         ${{ secrets.GITHUB_TOKEN }}
+
+# ============================================================
+#  JOB 4 — CREATE DEFECTS (Test Manager -> ADO connector)
+# ============================================================
+  create-defects:
+    name: '🐞 Create ADO Defects for Failures'
+    runs-on: windows-latest
+    needs: run-tests
+    # run whenever run-tests actually executed, whether it passed or failed,
+    # but skip if it was skipped/cancelled upstream (e.g. deploy failed)
+    if: always() && needs.run-tests.result != 'skipped' && needs.run-tests.result != 'cancelled'
+    env:
+      TM_PROJECT_KEY: ${{ secrets.TM_PROJECT_KEY }}
+    steps:
+
+      - name: Query failed logs and create defects via Test Manager API
+        run: |
+          $org        = "${{ env.ORCHESTRATOR_ORG }}"
+          $tenant     = "${{ env.ORCHESTRATOR_TENANT }}"
+          $projectKey = "${{ env.TM_PROJECT_KEY }}"
+
+          # 1) token for the Test Manager resource — a separate external app
+          #    (or a separate scopes pass on the same app) from the Orchestrator PAT above
+          $tmToken = (Invoke-RestMethod -Method Post `
+            -Uri "https://cloud.uipath.com/$org/identity_/connect/token" `
+            -ContentType "application/x-www-form-urlencoded" `
+            -Body @{
+              grant_type    = "client_credentials"
+              client_id     = "${{ secrets.UIPATH_TM_CLIENT_ID }}"
+              client_secret = "${{ secrets.UIPATH_TM_SECRET }}"
+              scope         = "TM.Projects TM.TestSets TM.TestExecutions"
+            }).access_token
+
+          $headers = @{ Authorization = "Bearer $tmToken" }
+          $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api"
+
+          # 2) find the execution that just ran and pull its per-case logs
+          $execution = Invoke-RestMethod -Headers $headers `
+            -Uri "$tmApi/testexecutions?projectKey=$projectKey&top=1&orderBy=finished desc"
+
+          # only test cases with status Failed are kept here — passed cases
+          # never reach the loop below, so only failures get defects filed
+          $failedLogs = (Invoke-RestMethod -Headers $headers `
+            -Uri "$tmApi/testexecutions/$($execution.id)/testcaselogs") |
+            Where-Object { $_.status -eq "Failed" }
+
+          if (-not $failedLogs -or $failedLogs.Count -eq 0) {
+            Write-Host "No failed test cases in this execution — nothing to file."
+            exit 0
+          }
+
+          # 3) create a defect per failure — Test Manager forwards this to ADO
+          #    via the connector configured on the project (TM-01), with the
+          #    execution log linked automatically
+          foreach ($log in $failedLogs) {
+            $body = @{
+              testExecutionId = $execution.id
+              testCaseId      = $log.testCaseId
+              description     = "Automated run failed.`n`nFailure: $($log.failureMessage)`n`nLog: $tmApi/testexecutions/$($execution.id)/testcaselogs/$($log.id)"
+            } | ConvertTo-Json
+
+            Invoke-RestMethod -Headers $headers -Method Post `
+              -Uri "$tmApi/testcaselogs/$($log.id)/defect" `
+              -ContentType "application/json" -Body $body
+
+            Write-Host "Defect filed in ADO for test case $($log.testCaseId)"
+          }
+        shell: powershell
