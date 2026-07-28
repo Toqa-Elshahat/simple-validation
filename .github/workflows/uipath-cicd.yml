@@ -157,48 +157,17 @@ jobs:
     if: always() && needs.run-tests.result != 'skipped' && needs.run-tests.result != 'cancelled'
     steps:
 
-      - name: Debug TM secrets
-        env:
-          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
-          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
-        run: |
-          if ([string]::IsNullOrEmpty($env:UIPATH_TM_CLIENT_ID)) {
-            Write-Error "UIPATH_TM_CLIENT_ID is empty!"
-          } else {
-            Write-Host "UIPATH_TM_CLIENT_ID is set, length: $($env:UIPATH_TM_CLIENT_ID.Length)"
-          }
-          if ([string]::IsNullOrEmpty($env:UIPATH_TM_SECRET)) {
-            Write-Error "UIPATH_TM_SECRET is empty!"
-          } else {
-            Write-Host "UIPATH_TM_SECRET is set, length: $($env:UIPATH_TM_SECRET.Length)"
-          }
-        shell: powershell
-
       - name: Query failed logs and create defects via Test Manager API
         env:
-          TM_PROJECT_KEY:     ${{ secrets.TM_PROJECT_KEY }}
-          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
-          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
+          TM_PROJECT_KEY: ${{ secrets.TM_PROJECT_KEY }}
+          UIPATH_TM_PAT:  ${{ secrets.UIPATH_TM_PAT }}
         run: |
           $org        = $env:ORCHESTRATOR_ORG
           $tenant     = $env:ORCHESTRATOR_TENANT
           $projectKey = $env:TM_PROJECT_KEY
 
-          # 1) token for the Test Manager resource - a separate external app
-          #    (or a separate scopes pass on the same app) from the Orchestrator PAT above
-          $tmBody = @{
-            grant_type    = "client_credentials"
-            client_id     = "8972588"
-            client_secret = "ouwyLMI!?R)FSkb((mLg3TVu#^c^BEC6Ka~t1ms@QtXO5gSA#b6rPh6pFn@pOg%0"
-            scope         = "TM.Projects TM.TestSets TM.TestExecutions"
-          }
-
-          $tmToken = (Invoke-RestMethod -Method Post `
-            -Uri "https://cloud.uipath.com/$org/identity_/connect/token" `
-            -ContentType "application/x-www-form-urlencoded" `
-            -Body $tmBody).access_token
-
-          $headers = @{ Authorization = "Bearer $tmToken" }
+          # PAT used directly as a bearer token - no client_credentials exchange needed
+          $headers = @{ Authorization = "Bearer $env:UIPATH_TM_PAT" }
           $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api"
 
           # 2) find the execution that just ran and pull its per-case logs
