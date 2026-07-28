@@ -188,8 +188,8 @@ jobs:
           #    (or a separate scopes pass on the same app) from the Orchestrator PAT above
           $tmBody = @{
             grant_type    = "client_credentials"
-            client_id     = $env:UIPATH_TM_CLIENT_ID
-            client_secret = $env:UIPATH_TM_SECRET
+            client_id     = "8972588"
+            client_secret = "ouwyLMI!?R)FSkb((mLg3TVu#^c^BEC6Ka~t1ms@QtXO5gSA#b6rPh6pFn@pOg%0"
             scope         = "TM.Projects TM.TestSets TM.TestExecutions"
           }
 
