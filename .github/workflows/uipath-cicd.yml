@@ -15,7 +15,6 @@ env:
   ORCHESTRATOR_TENANT: 'DefaultTenant'
   ORCHESTRATOR_ORG:    'toqaectwrkb'
   ORCHESTRATOR_FOLDER: 'Shared'
-  ALLURE_VERSION:      '2.27.0'
 
 jobs:
 
@@ -109,29 +108,8 @@ jobs:
       - name: Setup UiPath CLI
         uses: Mikael-RnD/setup-uipath@v2
 
-      - name: Setup Java for Allure
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install Allure CLI
-        run: |
-          $allureZip = "${{ github.workspace }}\allure.zip"
-          $allureDir = "${{ github.workspace }}\allure-cli"
-          Invoke-WebRequest `
-            -Uri "https://github.com/allure-framework/allure2/releases/download/${{ env.ALLURE_VERSION }}/allure-${{ env.ALLURE_VERSION }}.zip" `
-            -OutFile $allureZip
-          Expand-Archive -Path $allureZip -DestinationPath $allureDir -Force
-          echo "ALLURE_BIN=$allureDir\allure-${{ env.ALLURE_VERSION }}\bin\allure.bat" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "✅ Allure installed"
-        shell: powershell
-
-      - name: Create results directories
-        run: |
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\allure-results"
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\allure-report"
+      - name: Create results directory
+        run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
         shell: powershell
 
       - name: Run Test Set in Orchestrator
@@ -147,122 +125,15 @@ jobs:
             -r "${{ github.workspace }}\results\results.xml" `
             -w 300 `
             --attachRobotLogs true `
-            --traceLevel Verbose `
-            --repositoryUrl "https://github.com/Toqa-Elshahat/simple-validation" `
-            --repositoryBranch "${{ github.ref_name }}" `
-            --repositoryCommit "${{ github.sha }}" `
-            --repositoryType git
+            --traceLevel Verbose
         shell: powershell
 
-      - name: Convert JUnit XML to Allure JSON format
-        if: always()
-        run: |
-          # Install Python converter
-          pip install junit2allure --quiet
-
-          # Convert JUnit XML to Allure JSON
-          python -c "
-          import xml.etree.ElementTree as ET
-          import json, os, uuid, time
-
-          tree = ET.parse(r'${{ github.workspace }}\results\results.xml')
-          root = tree.getroot()
-
-          output_dir = r'${{ github.workspace }}\allure-results'
-          os.makedirs(output_dir, exist_ok=True)
-
-          for suite in root.iter('testsuite'):
-              suite_name = suite.get('name', 'Unknown Suite')
-              for tc in suite.iter('testcase'):
-                  test_name = tc.get('name', 'Unknown Test')
-                  duration  = float(tc.get('time', 0)) * 1000
-                  failure   = tc.find('failure')
-                  sysout    = tc.find('system-out')
-
-                  status = 'failed' if failure is not None else 'passed'
-
-                  result = {
-                      'uuid': str(uuid.uuid4()),
-                      'name': test_name,
-                      'status': status,
-                      'stage': 'finished',
-                      'start': int(time.time() * 1000) - int(duration),
-                      'stop': int(time.time() * 1000),
-                      'fullName': suite_name + '.' + test_name,
-                      'labels': [
-                          {'name': 'suite',     'value': suite_name},
-                          {'name': 'framework', 'value': 'UiPath'},
-                          {'name': 'language',  'value': 'VisualBasic'},
-                          {'name': 'branch',    'value': '${{ github.ref_name }}'},
-                          {'name': 'commit',    'value': '${{ github.sha }}'}
-                      ],
-                      'steps': []
-                  }
-
-                  if failure is not None:
-                      result['statusDetails'] = {
-                          'message': failure.get('message', 'Test failed'),
-                          'trace':   failure.text or ''
-                      }
-
-                  if sysout is not None and sysout.text:
-                      for line in sysout.text.strip().split('\n'):
-                          line = line.strip()
-                          if line:
-                              level = 'failed' if 'error' in line.lower() else 'passed'
-                              result['steps'].append({
-                                  'name':   line,
-                                  'status': level,
-                                  'stage':  'finished'
-                              })
-
-                  fname = os.path.join(output_dir, str(uuid.uuid4()) + '-result.json')
-                  with open(fname, 'w') as f:
-                      json.dump(result, f, indent=2)
-
-          print('Conversion complete')
-          "
-
-          Write-Host "✅ JUnit XML converted to Allure format"
-        shell: powershell
-
-      - name: Add Allure environment info
-        if: always()
-        run: |
-          @"
-          Branch=${{ github.ref_name }}
-          Commit=${{ github.sha }}
-          Orchestrator=${{ env.ORCHESTRATOR_URL }}
-          Tenant=${{ env.ORCHESTRATOR_TENANT }}
-          Folder=${{ env.ORCHESTRATOR_FOLDER }}
-          "@ | Out-File "${{ github.workspace }}\allure-results\environment.properties" -Encoding UTF8
-        shell: powershell
-
-      - name: Generate Allure Report
-        if: always()
-        run: |
-          & "${{ env.ALLURE_BIN }}" generate `
-            "${{ github.workspace }}\allure-results" `
-            --output "${{ github.workspace }}\allure-report" `
-            --clean
-          Write-Host "✅ Allure report generated"
-        shell: powershell
-
-      - name: Upload Allure Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: allure-report
-          path: ${{ github.workspace }}\allure-report
-          retention-days: 14
-
-      - name: Upload raw results
+      - name: Upload results artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: ${{ github.workspace }}\results\results.xml
-          retention-days: 14
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
