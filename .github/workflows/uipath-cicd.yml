@@ -159,17 +159,33 @@ jobs:
 
       - name: Query failed logs and create defects via Test Manager API
         env:
-          TM_PROJECT_NAME: ${{ secrets.TM_PROJECT_NAME }}
-          UIPATH_TM_PAT:   ${{ secrets.UIPATH_TM_PAT }}
+          TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
+          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
+          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
         run: |
           $org         = $env:ORCHESTRATOR_ORG
           $tenant      = $env:ORCHESTRATOR_TENANT
           $projectName = $env:TM_PROJECT_NAME
 
-          $headers = @{ Authorization = "Bearer $env:UIPATH_TM_PAT" }
+          # 1) exchange client_id/secret for a token scoped to Test Manager
+          #    (this app needs TM.Projects / TM.TestSets / TM.TestExecutions
+          #    under Application Scope(s), separate from the Orchestrator PAT)
+          $tmBody = @{
+            grant_type    = "client_credentials"
+            client_id     = $env:UIPATH_TM_CLIENT_ID
+            client_secret = $env:UIPATH_TM_SECRET
+            scope         = "TM.Projects TM.TestSets TM.TestExecutions"
+          }
+
+          $tmToken = (Invoke-RestMethod -Method Post `
+            -Uri "https://cloud.uipath.com/$org/identity_/connect/token" `
+            -ContentType "application/x-www-form-urlencoded" `
+            -Body $tmBody).access_token
+
+          $headers = @{ Authorization = "Bearer $tmToken" }
           $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api/v2"
 
-          # 1) resolve the Test Manager project's GUID from its name
+          # 2) resolve the Test Manager project's GUID from its name
           #    (the API takes a projectId GUID in the path, not a project key)
           $projectSearch = Invoke-RestMethod -Headers $headers `
             -Uri "$tmApi/projects?search=$projectName&top=50"
@@ -182,7 +198,7 @@ jobs:
           }
           $projectId = $project.id
 
-          # 2) find the execution that just ran
+          # 3) find the execution that just ran
           $executionSearch = Invoke-RestMethod -Headers $headers `
             -Uri "$tmApi/$projectId/testexecutions?top=1&orderby=created desc"
 
@@ -192,7 +208,7 @@ jobs:
             exit 0
           }
 
-          # 3) pull only the failed test case logs for that execution
+          # 4) pull only the failed test case logs for that execution
           #    (onlyFailed filters server-side - passed cases never come back)
           $logsResult = Invoke-RestMethod -Headers $headers `
             -Uri "$tmApi/$projectId/testcaselogs/testexecution/$($execution.id)/paged?onlyFailed=true&top=200"
@@ -204,7 +220,7 @@ jobs:
             exit 0
           }
 
-          # 4) create a defect per failure - Test Manager forwards this to ADO
+          # 5) create a defect per failure - Test Manager forwards this to ADO
           #    via the connector configured on the project (TM-01)
           foreach ($log in $failedLogs) {
             $body = @{
