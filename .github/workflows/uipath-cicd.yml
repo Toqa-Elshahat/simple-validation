@@ -174,7 +174,7 @@ jobs:
             grant_type    = "client_credentials"
             client_id     = $env:UIPATH_TM_CLIENT_ID
             client_secret = $env:UIPATH_TM_SECRET
-            scope         = "TM.Projects TM.TestSets TM.TestExecutions"
+            scope         = "TM.Projects TM.TestSets TM.TestExecutions TM.Defects"
           }
 
           $tmToken = (Invoke-RestMethod -Method Post `
