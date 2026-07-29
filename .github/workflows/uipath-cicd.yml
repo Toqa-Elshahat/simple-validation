@@ -152,7 +152,7 @@ jobs:
     name: '🐞 Create ADO Defects for Failures'
     runs-on: windows-latest
     needs: run-tests
-    # run whenever run-tests actually executed, whether it passed or failed,
+    # run whenever run-tests  actually executed, whether it passed or failed,
     # but skip if it was skipped/cancelled upstream (e.g. deploy failed)
     if: always() && needs.run-tests.result != 'skipped' && needs.run-tests.result != 'cancelled'
     steps:
