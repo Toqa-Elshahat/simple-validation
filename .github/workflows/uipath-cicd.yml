@@ -159,44 +159,61 @@ jobs:
 
       - name: Query failed logs and create defects via Test Manager API
         env:
-          TM_PROJECT_KEY: ${{ secrets.TM_PROJECT_KEY }}
-          UIPATH_TM_PAT:  ${{ secrets.UIPATH_TM_PAT }}
+          TM_PROJECT_NAME: ${{ secrets.TM_PROJECT_NAME }}
+          UIPATH_TM_PAT:   ${{ secrets.UIPATH_TM_PAT }}
         run: |
-          $org        = $env:ORCHESTRATOR_ORG
-          $tenant     = $env:ORCHESTRATOR_TENANT
-          $projectKey = $env:TM_PROJECT_KEY
+          $org         = $env:ORCHESTRATOR_ORG
+          $tenant      = $env:ORCHESTRATOR_TENANT
+          $projectName = $env:TM_PROJECT_NAME
 
-          # PAT used directly as a bearer token - no client_credentials exchange needed
           $headers = @{ Authorization = "Bearer $env:UIPATH_TM_PAT" }
-          $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api"
+          $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api/v2"
 
-          # 2) find the execution that just ran and pull its per-case logs
-          $execution = Invoke-RestMethod -Headers $headers `
-            -Uri "$tmApi/testexecutions?projectKey=$projectKey&top=1&orderBy=finished desc"
+          # 1) resolve the Test Manager project's GUID from its name
+          #    (the API takes a projectId GUID in the path, not a project key)
+          $projectSearch = Invoke-RestMethod -Headers $headers `
+            -Uri "$tmApi/projects?search=$projectName&top=50"
 
-          # only test cases with status Failed are kept here - passed cases
-          # never reach the loop below, so only failures get defects filed
-          $failedLogs = (Invoke-RestMethod -Headers $headers `
-            -Uri "$tmApi/testexecutions/$($execution.id)/testcaselogs") |
-            Where-Object { $_.status -eq "Failed" }
+          $project = $projectSearch.data | Where-Object { $_.name -eq $projectName } | Select-Object -First 1
+          if (-not $project) { $project = $projectSearch.data | Select-Object -First 1 }
+          if (-not $project) {
+            Write-Error "No Test Manager project found matching name '$projectName'"
+            exit 1
+          }
+          $projectId = $project.id
+
+          # 2) find the execution that just ran
+          $executionSearch = Invoke-RestMethod -Headers $headers `
+            -Uri "$tmApi/$projectId/testexecutions?top=1&orderby=created desc"
+
+          $execution = $executionSearch.data | Select-Object -First 1
+          if (-not $execution) {
+            Write-Host "No test executions found for this project - nothing to file."
+            exit 0
+          }
+
+          # 3) pull only the failed test case logs for that execution
+          #    (onlyFailed filters server-side - passed cases never come back)
+          $logsResult = Invoke-RestMethod -Headers $headers `
+            -Uri "$tmApi/$projectId/testcaselogs/testexecution/$($execution.id)/paged?onlyFailed=true&top=200"
+
+          $failedLogs = $logsResult.data
 
           if (-not $failedLogs -or $failedLogs.Count -eq 0) {
             Write-Host "No failed test cases in this execution - nothing to file."
             exit 0
           }
 
-          # 3) create a defect per failure - Test Manager forwards this to ADO
-          #    via the connector configured on the project (TM-01), with the
-          #    execution log linked automatically
+          # 4) create a defect per failure - Test Manager forwards this to ADO
+          #    via the connector configured on the project (TM-01)
           foreach ($log in $failedLogs) {
             $body = @{
-              testExecutionId = $execution.id
               testCaseId      = $log.testCaseId
-              description     = "Automated run failed.`n`nFailure: $($log.failureMessage)`n`nLog: $tmApi/testexecutions/$($execution.id)/testcaselogs/$($log.id)"
+              testExecutionId = $execution.id
             } | ConvertTo-Json
 
             Invoke-RestMethod -Headers $headers -Method Post `
-              -Uri "$tmApi/testcaselogs/$($log.id)/defect" `
+              -Uri "$tmApi/$projectId/defects" `
               -ContentType "application/json" -Body $body
 
             Write-Host "Defect filed in ADO for test case $($log.testCaseId)"
