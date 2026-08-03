@@ -160,10 +160,14 @@ jobs:
     if: always() && needs.run-tests.result != 'skipped' && needs.run-tests.result != 'cancelled'
     steps:
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Query failed logs and create defects via Test Manager API
         env:
           TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
           UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
           UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
-        run: .github\scripts\create-defects.ps1
+        run: |
+          & "$env:GITHUB_WORKSPACE\.github\scripts\create-defects.ps1"
         shell: powershell
