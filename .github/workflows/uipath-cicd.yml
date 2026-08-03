@@ -117,8 +117,10 @@ jobs:
           uipcli test run `
             "${{ env.ORCHESTRATOR_URL }}" `
             "${{ env.ORCHESTRATOR_TENANT }}" `
-            --token "${{ secrets.UIPATH_PAT }}" `
-            --accountName "${{ env.ORCHESTRATOR_ORG }}" `
+            --accountForApp     "${{ env.ORCHESTRATOR_ORG }}" `
+            --applicationId     "${{ secrets.UIPATH_TM_CLIENT_ID }}" `
+            --applicationSecret "${{ secrets.UIPATH_TM_SECRET }}" `
+            --applicationScope  "OR.Folders OR.Execution TM.Projects TM.TestSets TM.TestExecutions" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             --projectKey "CPN" `
             --testsetkey "CPN:1" `
