@@ -12,6 +12,10 @@
       TM_PROJECT_NAME       - Test Manager project name
       UIPATH_TM_CLIENT_ID   - External app client id (TM scopes)
       UIPATH_TM_SECRET      - External app client secret
+
+    The external application behind UIPATH_TM_CLIENT_ID must have ALL of these
+    Application Scopes granted, otherwise the token/defect calls return 403:
+      TM.Projects  TM.TestSets  TM.TestExecutions  TM.Defects
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -20,8 +24,17 @@ $org         = $env:ORCHESTRATOR_ORG
 $tenant      = $env:ORCHESTRATOR_TENANT
 $projectName = $env:TM_PROJECT_NAME
 
+# 0) fail fast with a clear message if any required input is missing
+foreach ($name in 'ORCHESTRATOR_ORG','ORCHESTRATOR_TENANT','TM_PROJECT_NAME','UIPATH_TM_CLIENT_ID','UIPATH_TM_SECRET') {
+    $value = [Environment]::GetEnvironmentVariable($name)
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        Write-Error "Required environment variable '$name' is not set."
+        exit 1
+    }
+}
+
 # 1) exchange client_id/secret for a token scoped to Test Manager
-#    (this app needs TM.Projects / TM.TestSets / TM.TestExecutions
+#    (this app needs TM.Projects / TM.TestSets / TM.TestExecutions / TM.Defects
 #    under Application Scope(s), separate from the Orchestrator PAT)
 $tmBody = @{
     grant_type    = "client_credentials"
@@ -30,18 +43,25 @@ $tmBody = @{
     scope         = "TM.Projects TM.TestSets TM.TestExecutions TM.Defects"
 }
 
-$tmToken = (Invoke-RestMethod -Method Post `
+$tokenResponse = Invoke-RestMethod -Method Post `
     -Uri "https://cloud.uipath.com/$org/identity_/connect/token" `
     -ContentType "application/x-www-form-urlencoded" `
-    -Body $tmBody).access_token
+    -Body $tmBody
+
+$tmToken = $tokenResponse.access_token
+if ([string]::IsNullOrWhiteSpace($tmToken)) {
+    Write-Error "Failed to obtain a Test Manager access token. Check UIPATH_TM_CLIENT_ID/SECRET and that the app has the TM.* scopes granted."
+    exit 1
+}
 
 $headers = @{ Authorization = "Bearer $tmToken" }
 $tmApi   = "https://cloud.uipath.com/$org/$tenant/testmanager_/api/v2"
 
 # 2) resolve the Test Manager project's GUID from its name
 #    (the API takes a projectId GUID in the path, not a project key)
+$encodedName = [uri]::EscapeDataString($projectName)
 $projectSearch = Invoke-RestMethod -Headers $headers `
-    -Uri "$tmApi/projects?search=$projectName&top=50"
+    -Uri "$tmApi/projects?search=$encodedName&top=50"
 
 $project = $projectSearch.data | Where-Object { $_.name -eq $projectName } | Select-Object -First 1
 if (-not $project) { $project = $projectSearch.data | Select-Object -First 1 }
@@ -51,9 +71,10 @@ if (-not $project) {
 }
 $projectId = $project.id
 
-# 3) find the execution that just ran
+# 3) find the execution that just ran (most recent one for this project)
+$orderBy = [uri]::EscapeDataString("created desc")
 $executionSearch = Invoke-RestMethod -Headers $headers `
-    -Uri "$tmApi/$projectId/testexecutions?top=1&orderby=created desc"
+    -Uri "$tmApi/$projectId/testexecutions?top=1&orderby=$orderBy"
 
 $execution = $executionSearch.data | Select-Object -First 1
 if (-not $execution) {

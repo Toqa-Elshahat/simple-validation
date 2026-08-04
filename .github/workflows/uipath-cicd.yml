@@ -22,7 +22,7 @@ jobs:
 #  JOB 1 — PACK
 # ============================================================
   pack:
-    name: '📦 Pack Project'
+    name: 'Pack Project'
     runs-on: windows-latest
     steps:
 
@@ -51,7 +51,7 @@ jobs:
           if ("${{ secrets.UIPATH_PAT }}" -eq "") {
             Write-Error "UIPATH_PAT is empty!"
           } else {
-            Write-Host "UIPATH_PAT is set ✅"
+            Write-Host "UIPATH_PAT is set"
           }
         shell: powershell
 
@@ -59,7 +59,7 @@ jobs:
 #  JOB 2 — DEPLOY
 # ============================================================
   deploy:
-    name: '🚀 Deploy to Orchestrator'
+    name: 'Deploy to Orchestrator'
     runs-on: windows-latest
     needs: pack
     steps:
@@ -93,7 +93,7 @@ jobs:
 #  JOB 3 — RUN TESTS
 # ============================================================
   run-tests:
-    name: '🧪 Run Test Cases'
+    name: 'Run Test Cases'
     runs-on: windows-latest
     needs: deploy
     permissions:
@@ -112,7 +112,11 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\results"
         shell: powershell
 
+      # continue-on-error: a failing TEST CASE makes uipcli exit 1, which would
+      # otherwise fail the job before results are published and defects are filed.
+      # The real pass/fail signal is surfaced by the "Publish Test Results" step.
       - name: Run Test Set in Orchestrator
+        continue-on-error: true
         run: |
           uipcli test run `
             "${{ env.ORCHESTRATOR_URL }}" `
@@ -120,7 +124,7 @@ jobs:
             --accountForApp     "${{ env.ORCHESTRATOR_ORG }}" `
             --applicationId     "${{ secrets.UIPATH_TM_CLIENT_ID }}" `
             --applicationSecret "${{ secrets.UIPATH_TM_SECRET }}" `
-            --applicationScope  "OR.Folders OR.Execution TM.Projects TM.TestSets TM.TestExecutions" `
+            --applicationScope  "OR.Folders OR.Execution OR.Monitoring TM.Projects TM.TestSets TM.TestExecutions" `
             -o "${{ env.ORCHESTRATOR_FOLDER }}" `
             --projectKey "CPN" `
             --testsetkey "CPN:1" `
@@ -152,10 +156,10 @@ jobs:
 #  JOB 4 — CREATE DEFECTS (Test Manager -> ADO connector)
 # ============================================================
   create-defects:
-    name: '🐞 Create ADO Defects for Failures'
+    name: 'Create ADO Defects for Failures'
     runs-on: windows-latest
     needs: run-tests
-    # Run whenever run-tests  actually executed, whether it passed or failed,
+    # Run whenever run-tests actually executed, whether it passed or failed,
     # but skip if it was skipped/cancelled upstream (e.g. deploy failed)
     if: always() && needs.run-tests.result != 'skipped' && needs.run-tests.result != 'cancelled'
     steps:
@@ -165,6 +169,8 @@ jobs:
 
       - name: Query failed logs and create defects via Test Manager API
         env:
+          ORCHESTRATOR_ORG:    ${{ env.ORCHESTRATOR_ORG }}
+          ORCHESTRATOR_TENANT: ${{ env.ORCHESTRATOR_TENANT }}
           TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
           UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
           UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
