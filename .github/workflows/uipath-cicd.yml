@@ -116,7 +116,7 @@ jobs:
       # otherwise fail the job before results are published and defects are filed.
       # The real pass/fail signal is surfaced by the "Publish Test Results" step.
       - name: Run Test Set in Orchestrator
-        continue-on-error: true
+      #  continue-on-error: true
         run: |
           uipcli test run `
             "${{ env.ORCHESTRATOR_URL }}" `
