@@ -159,6 +159,7 @@ jobs:
         env:
           ORCHESTRATOR_ORG:    ${{ env.ORCHESTRATOR_ORG }}
           ORCHESTRATOR_TENANT: ${{ env.ORCHESTRATOR_TENANT }}
+          ORCHESTRATOR_FOLDER: ${{ env.ORCHESTRATOR_FOLDER }}
           TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
           UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
           UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
