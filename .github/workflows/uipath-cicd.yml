@@ -151,12 +151,25 @@ jobs:
           & "$env:GITHUB_WORKSPACE\.github\scripts\enrich-junit.ps1"
         shell: powershell
 
+      # Render the (enriched) JUnit XML into a standalone human-readable HTML
+      # page. Because enrichment already put robot logs in <system-out> and the
+      # assertion detail in <failure>, this HTML carries them too.
+      - name: Render JUnit to HTML
+        if: always()
+        run: |
+          npx --yes xunit-viewer@10 `
+            --results="${{ github.workspace }}\results\results.xml" `
+            --output="${{ github.workspace }}\results\results.html"
+        shell: powershell
+
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: ${{ github.workspace }}\results\results.xml
+          path: |
+            ${{ github.workspace }}\results\results.xml
+            ${{ github.workspace }}\results\results.html
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
