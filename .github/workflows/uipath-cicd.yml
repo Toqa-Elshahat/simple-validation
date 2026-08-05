@@ -152,6 +152,28 @@ jobs:
           fail-on-error: false
           token:         ${{ secrets.GITHUB_TOKEN }}
 
+      # Human-readable HTML report: Assertions / Logs / Healing Logs /
+      # Execution details / Attachments, one card per test case.
+      - name: Generate HTML report
+        if: always()
+        env:
+          ORCHESTRATOR_ORG:    ${{ env.ORCHESTRATOR_ORG }}
+          ORCHESTRATOR_TENANT: ${{ env.ORCHESTRATOR_TENANT }}
+          TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
+          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
+          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
+          REPORT_OUT:          ${{ github.workspace }}\results\report.html
+        run: |
+          & "$env:GITHUB_WORKSPACE\.github\scripts\generate-report.ps1"
+        shell: powershell
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-html
+          path: ${{ github.workspace }}\results\report.html
+
 # ============================================================
 #  JOB 4 — CREATE DEFECTS (Test Manager -> ADO connector)
 # ============================================================
