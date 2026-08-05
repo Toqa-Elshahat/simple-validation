@@ -135,6 +135,22 @@ jobs:
             --traceLevel Verbose
         shell: powershell
 
+      # Inject Test Manager execution details + Orchestrator robot logs into the
+      # JUnit results.xml, so the failure reason and logs show up in the report.
+      - name: Enrich JUnit results
+        if: always()
+        env:
+          ORCHESTRATOR_ORG:    ${{ env.ORCHESTRATOR_ORG }}
+          ORCHESTRATOR_TENANT: ${{ env.ORCHESTRATOR_TENANT }}
+          ORCHESTRATOR_FOLDER: ${{ env.ORCHESTRATOR_FOLDER }}
+          TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
+          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
+          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
+          RESULTS_XML:         ${{ github.workspace }}\results\results.xml
+        run: |
+          & "$env:GITHUB_WORKSPACE\.github\scripts\enrich-junit.ps1"
+        shell: powershell
+
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
         if: always()
@@ -151,29 +167,6 @@ jobs:
           reporter:      java-junit
           fail-on-error: false
           token:         ${{ secrets.GITHUB_TOKEN }}
-
-      # Human-readable HTML report: Assertions / Logs / Healing Logs /
-      # Execution details / Attachments, one card per test case.
-      - name: Generate HTML report
-        if: always()
-        env:
-          ORCHESTRATOR_ORG:    ${{ env.ORCHESTRATOR_ORG }}
-          ORCHESTRATOR_TENANT: ${{ env.ORCHESTRATOR_TENANT }}
-          ORCHESTRATOR_FOLDER: ${{ env.ORCHESTRATOR_FOLDER }}
-          TM_PROJECT_NAME:     ${{ secrets.TM_PROJECT_NAME }}
-          UIPATH_TM_CLIENT_ID: ${{ secrets.UIPATH_TM_CLIENT_ID }}
-          UIPATH_TM_SECRET:    ${{ secrets.UIPATH_TM_SECRET }}
-          REPORT_OUT:          ${{ github.workspace }}\results\report.html
-        run: |
-          & "$env:GITHUB_WORKSPACE\.github\scripts\generate-report.ps1"
-        shell: powershell
-
-      - name: Upload HTML report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-report-html
-          path: ${{ github.workspace }}\results\report.html
 
 # ============================================================
 #  JOB 4 — CREATE DEFECTS (Test Manager -> ADO connector)
